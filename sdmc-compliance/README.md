@@ -139,15 +139,22 @@ docker-compose up --build
 
 ---
 
-## 🎬 Demo Video
+## 🎬 Demo
 
-> *(Recording in progress — will be uploaded before 5:00 PM deadline)*
+![SDMC Compliance Platform Demo](docs/demo.gif)
 
-The demo shows:
-1. Live compliance dashboard with SHA-256 hash chain integrity banner
-2. Submitting a building permit through Gate 001 (Code Validation)
-3. OPA policy evaluation in real-time
-4. New evidence record appearing in the immutable ledger with full hash chain
+**Full workflow (7-frame walkthrough):**
+1. **Dashboard** — Chain Integrity VERIFIED · All records pass SHA-256 hash chain · Per 21 CFR Part 11 §11.10(a)
+2. **Compliance Gates** — Gate 001 (SDMC §129.0302) PASS · Gates 002/003 awaiting records
+3. **Evidence Ledger** — Immutable audit log with truncated SHA-256 hashes and hash-chain linkage
+4. **Submit Permit Form** — Gate 001 Code Validation · SDMC §129.0302
+5. **Filled Form** — Permit ID `BP-2026-0307`, project address, applicant, OPA gate details
+6. **OPA Evaluation → PASS** — Evidence record stored: `BP-2026-0307-GIF2-GATE001-20260307-…`
+7. **Chain Updated** — Chain Integrity VERIFIED · All **5** records pass SHA-256 verification
+
+| Dashboard | Success | Chain Updated |
+|-----------|---------|---------------|
+| ![](docs/screenshot-dashboard.png) | ![](docs/screenshot-success.png) | ![](docs/screenshot-chain-updated.png) |
 
 ---
 
