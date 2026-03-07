@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Submit Permit · SDMC Compliance{% endblock %}
+
+{% block extra_css %}
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 24px;
+}
+.fieldset-hdr {
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--navy);
+  border-bottom: 2px solid var(--navy);
+  padding-bottom: 7px;
+  margin-bottom: 18px;
+}
+.result-box {
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-top: 24px;
+}
+.result-pass { background: var(--green-l); border: 1px solid #86efac; }
+.result-fail { background: var(--red-l);   border: 1px solid #fca5a5; }
+.err-item {
+  background: #fff;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  padding: 9px 13px;
+  font-size: .78rem;
+  color: #7f1d1d;
+  font-family: var(--mono);
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+{% endblock %}
+
+{% block content %}
+
+{# ── Page header ── #}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 style="font-size:1.5rem; font-weight:800; color:var(--navy)">Submit Building Permit</h1>
+    <p class="text-sm text-muted mt-1">
+      Gate 001 — Code Section Validation · SDMC §129.0302
+    </p>
+  </div>
+  <a href="/dashboard" class="btn btn-outline">← Dashboard</a>
+</div>
+
+{# ── Error banner (system error, not OPA FAIL) ── #}
+{% if error %}
+<div class="alert alert-error mb-5">⚠️ {{ error }}</div>
+{% endif %}
+
+{# ── Info hero card ── #}
+<div class="card mb-5" style="background:linear-gradient(135deg,#003087 0%,#004db5 100%);
+     color:#fff; border:none; padding:20px 28px;">
+  <div style="font-weight:700; font-size:1rem; margin-bottom:6px">🏛️ How this works</div>
+  <div class="text-sm" style="opacity:.9; line-height:1.65">
+    Your submission is evaluated against SDMC compliance rules by
+    <strong>Open Policy Agent (OPA)</strong> running Rego policies in real-time.
+    On approval, a <strong>SHA-256 evidence record</strong> is cryptographically chained
+    to the immutable audit ledger.
+    Client-provided hashes are always discarded — the server recomputes them.
+    Per <strong>21 CFR Part 11 §11.10(e)</strong> and <strong>NIST SP 800-53 AU-9</strong>.
+  </div>
+</div>
+
+{# ── Permit form ── #}
+<div class="card">
+  <form method="POST" action="/submit">
+
+    {# ── Section 1: Permit Metadata ── #}
+    <div class="fieldset-hdr">1 · Permit Metadata</div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Permit ID <span>*</span></label>
+        <input type="text" name="permit_id" class="form-input" required
+               value="{{ permit_id }}" placeholder="BP-2025-0307">
+        <div class="form-hint">Format: BP-YYYY-MMDD (auto-filled for today)</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">SDMC Version <span>*</span></label>
+        <input type="text" name="sdmc_version" class="form-input" required
+               value="2024" placeholder="2024">
+        <div class="form-hint">Applicable Municipal Code edition year</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Project Address <span>*</span></label>
+      <input type="text" name="project_address" class="form-input" required
+             placeholder="1600 Pacific Hwy, San Diego, CA 92101">
+      <div class="form-hint">Full street address of the permitted project</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Applicant Name <span>*</span></label>
+      <input type="text" name="applicant_name" class="form-input" required
+             placeholder="Jane Smith / Acme Construction LLC">
+    </div>
+
+    {# ── Section 2: Code Section ── #}
+    <div class="fieldset-hdr" style="margin-top:8px">2 · Code Section</div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Section ID <span>*</span></label>
+        <select name="section_id" class="form-select">
+          <option value="SDMC-142.0503" selected>SDMC-142.0503 — Solar Energy Systems</option>
+          <option value="SDMC-143.0125">SDMC-143.0125 — Electrical Systems</option>
+          <option value="SDMC-129.0302">SDMC-129.0302 — Building Permit Requirements</option>
+          <option value="SDMC-131.0450">SDMC-131.0450 — Structural Loads</option>
+          <option value="SDMC-156.0201">SDMC-156.0201 — Zoning &amp; Setbacks</option>
+        </select>
+        <div class="form-hint">Format must match: SDMC-###.####</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Verification Method <span>*</span></label>
+        <select name="verification_method" class="form-select">
+          <option value="Inspection" selected>Inspection</option>
+          <option value="Plan Review">Plan Review</option>
+          <option value="Calculation Review">Calculation Review</option>
+          <option value="Testing">Testing</option>
+          <option value="Third-Party Certification">Third-Party Certification</option>
+        </select>
+        <div class="form-hint">Per SDMC §129.0306 approved methods</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Compliance Criteria <span>*</span></label>
+      <input type="text" name="compliance_criteria" class="form-input" required
+             value="Setback requirements verified per SDMC code"
+             placeholder="Specific finding or requirement that was verified">
+      <div class="form-hint">
+        Describe what was verified (must be non-empty per NIST SP 800-53 CA-2)
+      </div>
+    </div>
+
+    {# ── Section 3: Inspector sign-off ── #}
+    <div class="fieldset-hdr" style="margin-top:8px">3 · Inspector Sign-off</div>
+    <div class="form-group">
+      <label class="form-label">Inspector / Signer Email <span>*</span></label>
+      <input type="email" name="signer_id" class="form-input" required
+             placeholder="inspector.name@sandiego.gov">
+      <div class="form-hint">
+        Electronic identity per NIST SP 800-53 IA-2 (Identification and Authentication)
+      </div>
+    </div>
+
+    {# ── Submit ── #}
+    <div style="border-top:1px solid var(--border); padding-top:20px; margin-top:4px;
+                display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+      <button type="submit" class="btn btn-success">
+        🔒 Evaluate &amp; Submit
+      </button>
+      <span class="text-xs text-muted">
+        Evaluated by OPA gate-001-code-validation ·
+        On PASS: SHA-256 evidence record written to immutable ledger
+      </span>
+    </div>
+
+  </form>
+
+  {# ── Inline result (FAIL or system error) ── #}
+  {% if result %}
+  <div class="result-box {% if result.decision == 'PASS' %}result-pass{% else %}result-fail{% endif %}">
+    {% if result.decision == 'PASS' %}
+    <div style="font-weight:700; font-size:1rem; color:var(--green); margin-bottom:6px">
+      ✅ Gate 001 PASSED — Evidence Record Stored
+    </div>
+    <div class="text-sm" style="color:#15803d">
+      Redirecting to dashboard with your evidence record…
+    </div>
+    {% else %}
+    <div style="font-weight:700; font-size:1rem; color:var(--red); margin-bottom:10px">
+      ❌ Gate 001 FAILED — Evidence Not Stored
+    </div>
+    <div class="text-sm" style="color:#991b1b; margin-bottom:12px">
+      OPA policy rejected the submission.
+      Resolve the {{ result.validation_errors | length }}
+      error{{ 's' if result.validation_errors | length != 1 else '' }} below and resubmit:
+    </div>
+    {% for err in result.validation_errors %}
+    <div class="err-item">{{ err }}</div>
+    {% endfor %}
+    <div class="text-xs text-muted mt-3">
+      Per SDMC §129.0302 · Evidence not stored until gate passes
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+{# ── Gate-001 policy quick-reference ── #}
+<div class="card mt-4" style="padding:18px 24px;">
+  <div style="font-size:.82rem; font-weight:700; color:var(--navy); margin-bottom:10px">
+    📋 Gate 001 Validation Rules (OPA Rego)
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+    {% for rule in [
+        ('Metadata required', 'permit_id, project_address, applicant_name, sdmc_version must be non-empty'),
+        ('Section ID format', 'Must match SDMC-###.#### (e.g. SDMC-142.0503)'),
+        ('Verification method', 'One of: Inspection, Plan Review, Calculation Review, Testing, Third-Party Certification'),
+        ('Compliance criteria', 'Must be non-empty — describes what was verified'),
+        ('No duplicate sections', 'Each SDMC Section_ID may appear only once per permit'),
+        ('Hash chain integrity', 'Server computes SHA-256; client hashes are always discarded'),
+    ] %}
+    <div style="background:#f8fafc; border:1px solid var(--border); border-radius:7px; padding:10px 13px;">
+      <div style="font-size:.78rem; font-weight:700; color:var(--navy); margin-bottom:3px">{{ rule[0] }}</div>
+      <div style="font-size:.73rem; color:var(--slate)">{{ rule[1] }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

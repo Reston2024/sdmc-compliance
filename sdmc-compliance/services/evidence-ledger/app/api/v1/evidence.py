@@ -42,6 +42,30 @@ def _to_response(record) -> EvidenceResponse:
     )
 
 
+@router.get(
+    "",
+    response_model=list[EvidenceResponse],
+    summary="List recent evidence records",
+    description=(
+        "Returns the most recent evidence records in descending order. "
+        "Used by the compliance dashboard and external audit tools. "
+        "Per NIST SP 800-53 AU-6 (Audit Review, Analysis, and Reporting)."
+    ),
+)
+async def list_evidence(
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+) -> list[EvidenceResponse]:
+    """
+    List recent evidence records.
+
+    Per NIST SP 800-53 AU-6 (Audit Review, Analysis, and Reporting)
+    """
+    repo = EvidenceRepo(db)
+    records = await repo.get_recent(limit)
+    return [_to_response(r) for r in records]
+
+
 @router.post(
     "",
     response_model=EvidenceResponse,

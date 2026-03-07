@@ -20,6 +20,7 @@ from fastapi.responses import JSONResponse
 from app.api.v1.evidence import router as evidence_router
 from app.api.v1.integrity import router as integrity_router
 from app.db import engine
+from app.ui_router import router as ui_router
 
 
 @asynccontextmanager
@@ -51,6 +52,7 @@ app = FastAPI(
 
 app.include_router(evidence_router)
 app.include_router(integrity_router)
+app.include_router(ui_router)
 
 
 @app.get("/health/ready", tags=["health"])

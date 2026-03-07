@@ -164,6 +164,20 @@ class EvidenceRepo:
         )
         return result.scalar_one_or_none()
 
+    async def get_recent(self, limit: int = 20) -> list[EvidenceRecord]:
+        """
+        Retrieve the most recent evidence records for dashboard display.
+
+        Returns records in descending creation order (newest first).
+        Per NIST SP 800-53 AU-6 (Audit Review, Analysis, and Reporting)
+        """
+        result = await self.db.execute(
+            select(EvidenceRecord)
+            .order_by(EvidenceRecord.created_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
     async def get_all_ordered(self) -> list[EvidenceRecord]:
         """
         Retrieve all records in creation order for integrity verification.

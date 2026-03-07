@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · SDMC Compliance{% endblock %}
+
+{% block extra_css %}
+/* ── Gate status grid ── */
+.gate-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.gate-num {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: var(--navy);
+  opacity: .1;
+  line-height: 1;
+  user-select: none;
+}
+.gate-icon { font-size: 1.7rem; }
+
+/* ── Integrity banner ── */
+.int-bar {
+  border-radius: 10px;
+  padding: 16px 22px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.int-ok    { background: var(--green-l); border: 1px solid #86efac; }
+.int-fail  { background: var(--red-l);   border: 1px solid #fca5a5; }
+.int-empty { background: #f1f5f9;        border: 1px solid var(--border); }
+
+/* ── Chain link visual ── */
+.chain-icon { font-size: 1.1rem; margin-right: 6px; }
+{% endblock %}
+
+{% block content %}
+
+{# ── Success banner ── #}
+{% if success_id %}
+<div class="alert alert-success">
+  ✅ <strong>Evidence record stored:</strong>
+  <span class="font-mono" style="font-size:.82rem">{{ success_id }}</span>
+  — Gate 001 PASSED · SHA-256 hash chain updated
+</div>
+{% endif %}
+
+{# ── Page header ── #}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 style="font-size:1.5rem; font-weight:800; color:var(--navy)">Compliance Dashboard</h1>
+    <p class="text-sm text-muted mt-1">
+      Real-time gate status and cryptographic evidence ledger
+    </p>
+  </div>
+  <a href="/submit" class="btn btn-primary">＋ Submit Permit</a>
+</div>
+
+{# ── Chain integrity banner ── #}
+{% if integrity.checked == 0 %}
+<div class="int-bar int-empty">
+  <div>
+    <div style="font-weight:700; color:var(--slate)">⛓ Chain Integrity — No Records Yet</div>
+    <div class="text-xs text-muted mt-1">
+      Submit a permit to create the first evidence record in the ledger
+    </div>
+  </div>
+  <div class="pill pill-idle">0 records</div>
+</div>
+
+{% elif integrity.ok %}
+<div class="int-bar int-ok">
+  <div>
+    <div style="font-weight:700; color:var(--green); font-size:1rem">
+      ✅ Chain Integrity VERIFIED
+    </div>
+    <div class="text-xs mt-1" style="color:#15803d">
+      All {{ integrity.checked }} record{{ 's' if integrity.checked != 1 else '' }}
+      pass SHA-256 hash chain verification
+      · Per 21 CFR Part 11 §11.10(a)
+    </div>
+  </div>
+  <div class="pill pill-pass">{{ integrity.checked }} record{{ 's' if integrity.checked != 1 else '' }} verified</div>
+</div>
+
+{% else %}
+<div class="int-bar int-fail">
+  <div>
+    <div style="font-weight:700; color:var(--red); font-size:1rem">
+      ⚠️ Chain Integrity FAILURE DETECTED
+    </div>
+    <div class="text-xs mt-1" style="color:#991b1b">
+      {{ integrity.errors | length }} chain error(s) found across {{ integrity.checked }} records —
+      possible tampering
+    </div>
+  </div>
+  <div class="pill pill-fail">{{ integrity.errors | length }} error{{ 's' if integrity.errors | length != 1 else '' }}</div>
+</div>
+{% endif %}
+
+{# ── Gate status cards ── #}
+<div class="section-title">Compliance Gates</div>
+<div class="gate-grid">
+{% for gate_id, gs in gate_status.items() %}
+<div class="card">
+  <div class="flex items-center justify-between mb-2">
+    <span class="gate-icon">{{ gs.icon }}</span>
+    <span class="gate-num">{{ gs.number }}</span>
+  </div>
+  <div style="font-size:.9rem; font-weight:700; margin-bottom:3px">
+    Gate {{ gs.number }}: {{ gs.name }}
+  </div>
+  <div class="text-xs text-muted mb-4" style="line-height:1.5">
+    {{ gs.sdmc }}<br>{{ gs.desc }}
+  </div>
+  {% if gs.count == 0 %}
+    <div class="pill pill-idle">No records</div>
+  {% elif gs.last_decision == 'PASS' %}
+    <div class="pill pill-pass">✓ PASS</div>
+    <div class="text-xs text-muted mt-2">
+      {{ gs.count }} record{{ 's' if gs.count != 1 else '' }}
+      · Last: {{ gs.last_at.strftime('%b %d, %H:%M') }}
+    </div>
+  {% else %}
+    <div class="pill pill-fail">✗ {{ gs.last_decision or 'FAIL' }}</div>
+    <div class="text-xs text-muted mt-2">
+      {{ gs.count }} record{{ 's' if gs.count != 1 else '' }}
+      · Last: {{ gs.last_at.strftime('%b %d, %H:%M') if gs.last_at else '—' }}
+    </div>
+  {% endif %}
+</div>
+{% endfor %}
+</div>
+
+{# ── Evidence ledger table ── #}
+<div class="section-title">Evidence Ledger — Audit Log</div>
+
+{% if records %}
+<div class="card" style="padding:0; overflow:hidden;">
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Evidence ID</th>
+        <th>Gate</th>
+        <th>Decision</th>
+        <th>Evidence Hash (SHA-256)</th>
+        <th>Previous Hash</th>
+        <th>Timestamp (UTC)</th>
+        <th>Signer</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in records %}
+    {% set dec = r.decision_json.get('decision', r.decision_json.get('result', '?')) if r.decision_json is mapping else '?' %}
+    <tr>
+      <td class="text-xs text-muted" style="width:36px">{{ loop.index }}</td>
+
+      <td style="max-width:220px">
+        <span class="font-mono" style="font-size:.78rem; font-weight:600; color:var(--navy)"
+              title="{{ r.evidence_id }}">
+          {{ r.evidence_id[:36] }}{% if r.evidence_id | length > 36 %}…{% endif %}
+        </span>
+      </td>
+
+      <td>
+        <span class="pill pill-idle" style="font-size:.7rem; padding:2px 8px">
+          {% if 'code' in r.gate_id %}G-001
+          {% elif 'plan' in r.gate_id %}G-002
+          {% elif 'inspect' in r.gate_id %}G-003
+          {% else %}{{ r.gate_id }}
+          {% endif %}
+        </span>
+      </td>
+
+      <td>
+        {% if dec == 'PASS' %}
+          <span class="pill pill-pass" style="font-size:.72rem">✓ PASS</span>
+        {% else %}
+          <span class="pill pill-fail" style="font-size:.72rem">✗ {{ dec }}</span>
+        {% endif %}
+      </td>
+
+      <td>
+        <span class="hash" title="{{ r.evidence_hash }}">
+          {{ r.evidence_hash[:22] }}…
+        </span>
+      </td>
+
+      <td>
+        <span class="hash" title="{{ r.previous_hash }}">
+          {{ r.previous_hash[:22] }}…
+        </span>
+      </td>
+
+      <td class="text-xs text-muted" style="white-space:nowrap">
+        {{ r.created_at.strftime('%Y-%m-%d %H:%M') }}
+      </td>
+
+      <td class="text-xs text-muted" style="max-width:120px; overflow:hidden; text-overflow:ellipsis" title="{{ r.signer_id }}">
+        {{ r.signer_id.split('@')[0] if '@' in r.signer_id else r.signer_id }}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="text-xs text-muted mt-4" style="text-align:center">
+  Showing {{ records | length }} most recent record{{ 's' if records | length != 1 else '' }}
+  · SHA-256 FIPS 140-2 · Hash chain: each record's <em>previous_hash</em> = prior record's <em>evidence_hash</em>
+  · Per NIST SP 800-53 AU-11
+</div>
+
+{% else %}
+<div class="card" style="text-align:center; padding:52px 24px;">
+  <div style="font-size:3.5rem; margin-bottom:12px">📋</div>
+  <div style="font-weight:700; font-size:1.1rem; margin-bottom:6px">No Evidence Records Yet</div>
+  <div class="text-sm text-muted mb-5">
+    Submit a building permit to create the first cryptographic evidence record in the audit ledger
+  </div>
+  <a href="/submit" class="btn btn-primary">Submit First Permit</a>
+</div>
+{% endif %}
+
+{# ── Architecture quick-reference ── #}
+<div class="section-title mt-4">System Architecture</div>
+<div class="card" style="padding:18px 24px;">
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border); border-radius:8px; overflow:hidden;">
+    {% for label, detail, icon in [
+        ('Browser / API Client', 'POST /v1/evidence', '🌐'),
+        ('OPA Policy Engine', 'Gate 001 / 002 / 003', '🛡️'),
+        ('Evidence Ledger', 'FastAPI + SQLAlchemy', '⚙️'),
+        ('PostgreSQL', 'Hash chain + JSONB', '🗄️'),
+    ] %}
+    <div style="background:var(--card); padding:16px; text-align:center;">
+      <div style="font-size:1.8rem; margin-bottom:6px">{{ icon }}</div>
+      <div style="font-size:.82rem; font-weight:700; color:var(--navy); margin-bottom:3px">{{ label }}</div>
+      <div style="font-size:.72rem; color:var(--slate); font-family:var(--mono)">{{ detail }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="text-xs text-muted mt-3" style="text-align:center">
+    SHA-256 hash chain · OPA Rego policies · NIST SP 800-53 · 21 CFR Part 11 · SDMC Title 14
+  </div>
+</div>
+
+{% endblock %}
