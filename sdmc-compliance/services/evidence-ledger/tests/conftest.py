@@ -8,6 +8,13 @@ coroutine — no @pytest.mark.asyncio decorator needed.
 
 Per NIST SP 800-53 SA-11 (Developer Testing and Evaluation)
 """
+# IMPORTANT: Set DATABASE_URL *before* any app module is imported.
+# app/db.py creates the SQLAlchemy engine at module-load time using this env
+# var.  If it is not overridden here, the default postgresql+asyncpg:// URL
+# is used, which requires asyncpg and a live Postgres server.
+import os
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+
 import pytest
 import pytest_asyncio
 import httpx

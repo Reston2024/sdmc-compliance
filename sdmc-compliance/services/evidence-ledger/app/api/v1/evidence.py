@@ -7,6 +7,7 @@ GET  /v1/evidence/{id} - Retrieve record with full integrity metadata
 Per NIST SP 800-53 AU-6 (Audit Review, Analysis, and Reporting)
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -94,7 +95,13 @@ async def create_evidence(
         )
 
     repo = EvidenceRepo(db)
-    record = await repo.create(body)
+    try:
+        record = await repo.create(body)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Evidence record '{body.evidence_id}' already exists",
+        )
     return _to_response(record)
 
 

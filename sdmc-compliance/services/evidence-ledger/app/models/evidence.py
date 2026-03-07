@@ -10,9 +10,11 @@ Per NIST SP 800-53 AU-9 (Protection of Audit Information)
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Index, String, Text, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import DateTime, Index, JSON, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
+# NOTE: Production PostgreSQL migration uses JSONB (see 001_init_permits_schema.sql).
+# The ORM uses the cross-dialect JSON type so unit tests can run on SQLite without
+# installing asyncpg or a live Postgres instance.
 
 from app.db import Base
 
@@ -37,11 +39,11 @@ class EvidenceRecord(Base):
     gate_id: Mapped[str] = mapped_column(Text, nullable=False)
 
     # OPA decision output (PASS/FAIL + reasons) as JSONB
-    decision_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    decision_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
 
     # Complete gate inputs for audit completeness
     # Per 21 CFR Part 11 §11.10(e): must capture all inputs
-    inputs_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    inputs_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
 
     # Server-computed SHA-256 hash - NEVER from client
     # Per NIST SP 800-53 SC-13: FIPS 140-2 approved algorithm
