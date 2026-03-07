@@ -19,7 +19,7 @@ services:
       - "5432:5432"
 
   opa:
-    image: openpolicyagent/opa:0.70.0
+    image: openpolicyagent/opa:0.70.0-debug
     command:
       - "run"
       - "--server"
@@ -29,7 +29,8 @@ services:
     volumes:
       - ./policy/opa:/policies
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8181/health"]
+      # OPA /health only accepts GET (not HEAD). Use -O /dev/null for a GET request.
+      test: ["CMD", "wget", "--quiet", "--tries=1", "-O", "/dev/null", "http://localhost:8181/health"]
       interval: 5s
       timeout: 5s
       retries: 10

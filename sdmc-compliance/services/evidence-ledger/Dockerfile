@@ -5,14 +5,14 @@ WORKDIR /app
 # Install build tooling
 RUN pip install --no-cache-dir hatchling
 
-# Copy dependency manifest first for layer caching
+# Copy BOTH manifest and source so hatchling can resolve the wheel.
+# (Hatchling's default file-selection heuristic requires the package
+#  directory to exist at metadata-generation time.)
 COPY pyproject.toml .
+COPY app/ ./app/
 
 # Install production dependencies only (no dev extras)
 RUN pip install --no-cache-dir .
-
-# Copy application source
-COPY app/ ./app/
 
 # Per NIST SP 800-53 AC-6 (Least Privilege) - run as non-root
 RUN adduser --system --no-create-home --group appuser
